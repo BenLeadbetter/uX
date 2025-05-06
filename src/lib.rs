@@ -383,6 +383,13 @@ macro_rules! implement_common {
                 self.wrapping_sub(other)
             }
         }
+
+        #[cfg(feature = "arbitrary")]
+        impl<'a> arbitrary::Arbitrary<'a> for $name {
+            fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+                Ok($name($type::arbitrary(u)?).mask())
+            }
+        }
     };
 }
 
@@ -965,5 +972,25 @@ mod tests {
             SEVEN => panic!("Pattern matching failed (7 == 42?)"),
             _ => (),
         }
+    }
+}
+
+#[cfg(all(test, feature = "arbitrary"))]
+mod tests_arbitrary {
+    use super::*;
+    use arbitrary::Arbitrary;
+
+    #[test]
+    fn generate_from_unstructured_data() {
+        let data = [0x0, 0x0, 0x0, 0x0];
+        let mut unstructured = arbitrary::Unstructured::new(&data);
+        assert_eq!(u31::arbitrary(&mut unstructured), Ok(u31(0x0)));
+    }
+
+    #[test]
+    fn data_is_masked_appropriately_on_generation() {
+        let data = [0xFF, 0xFF, 0xFF, 0xFF];
+        let mut unstructured = arbitrary::Unstructured::new(&data);
+        assert_eq!(u31::arbitrary(&mut unstructured), Ok(u31(0x7FFFFFFF)));
     }
 }
